@@ -1,0 +1,131 @@
+:root {
+    --bg-dark: #0f172a;
+    --bg-panel: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-hover: #0284c7;
+    --border: #334155;
+    --highlight: #fbbf24;
+}
+
+html, body {
+    margin: 0; height: 100%; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--bg-dark); color: var(--text-main); overflow: hidden;
+}
+
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* TOPBAR */
+#topbar {
+    height: 50px; background: var(--bg-dark); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; padding: 0 20px;
+}
+.brand { font-size: 1.2rem; font-weight: bold; color: white; }
+.brand span { color: var(--accent); }
+.top-tools button { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; margin-left: 15px; transition: color 0.2s; }
+.top-tools button:hover { color: var(--accent); }
+
+/* MAIN CONTAINER (Sidebar + Map) */
+#main-container { display: flex; flex: 1; height: calc(65vh - 50px); }
+
+/* SIDEBAR */
+#sidebar {
+    width: 300px; background: var(--bg-panel); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto; z-index: 1000;
+}
+.sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.tab-btn {
+    flex: 1; background: none; border: none; color: var(--text-muted); padding: 12px;
+    cursor: pointer; font-weight: 600; border-bottom: 2px solid transparent; transition: 0.3s;
+}
+.tab-btn.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+.tab-content { display: none; padding: 15px; }
+.tab-content.active { display: block; }
+.tab-content h3 { font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-top: 0; }
+
+.layer-item { display: flex; align-items: center; margin-bottom: 10px; font-size: 0.9rem; }
+.layer-item input { margin-right: 10px; cursor: pointer; accent-color: var(--accent); }
+
+.mt-2 { margin-top: 15px; display: block; }
+select, input[type="color"], input[type="range"] { width: 100%; background: var(--bg-dark); border: 1px solid var(--border); color: white; padding: 5px; border-radius: 4px; }
+.btn-primary { width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 20px; transition: 0.2s; }
+.btn-primary:hover { background: var(--accent-hover); }
+
+/* MAPA */
+#map-wrapper { position: relative; flex: 1; }
+#map { width: 100%; height: 100%; background: #000; } /* Fondo negro para evitar destellos blancos */
+
+/* CONTROLES SOBRE EL MAPA */
+#compass {
+    position: absolute; top: 80px; left: 12px; z-index: 1000; background: white; color: #333;
+    width: 34px; height: 34px; border-radius: 4px; display: flex; justify-content: center; align-items: center;
+    font-size: 1.2rem; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: 0.3s;
+}
+#compass:hover { background: #f4f4f4; transform: rotate(15deg); }
+
+#coordinates {
+    position: absolute; bottom: 10px; right: 10px; z-index: 1000; background: rgba(15, 23, 42, 0.8);
+    color: var(--accent); padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-family: monospace;
+    backdrop-filter: blur(4px); border: 1px solid var(--border); pointer-events: none;
+}
+
+/* RESIZE BAR */
+#resizeBar { height: 6px; background: var(--border); cursor: ns-resize; flex-shrink: 0; z-index: 1010; }
+#resizeBar:hover { background: var(--accent); }
+
+/* PANEL INFERIOR Y TABLA FLOTANTE */
+#panelInferior { height: 35vh; background: var(--bg-dark); position: relative; }
+#panelBotonesFlotantes { padding: 10px; display: flex; gap: 10px; }
+#panelBotonesFlotantes button { background: var(--bg-panel); color: white; border: 1px solid var(--border); padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+#panelBotonesFlotantes button:hover { background: var(--border); }
+
+.ventana-flotante {
+    position: fixed !important; /* Fuerza la independencia total */
+    z-index: 5000;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    /* No pongas 'bottom' ni 'right' aquí, deja que el JS lo maneje */
+    min-width: 300px;
+    min-height: 200px;
+}
+
+.panel-header {
+    cursor: grab; /* Cambia el icono para que el usuario sepa que puede agarrarlo */
+    user-select: none; /* Evita que se seleccione texto mientras arrastras */
+}
+
+.panel-header:active {
+    cursor: grabbing;
+}
+/* TABLA DE ATRIBUTOS */
+table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--text-main); }
+th { background: #0f172a; position: sticky; top: 0; padding: 10px; text-align: left; z-index: 10; border-bottom: 2px solid var(--border); }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
+tr:hover td { background: rgba(56, 189, 248, 0.1); }
+tr.selected-row td { background: rgba(251, 191, 36, 0.2); border-left: 3px solid var(--highlight); } /* Fila seleccionada */
+
+.tabla-datos {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-main);
+    font-size: 14px;
+}
+
+.tabla-datos th {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    text-align: left;
+    border-bottom: 2px solid var(--accent);
+}
+
+.tabla-datos td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tabla-datos tr:hover {
+    background: rgba(56, 189, 248, 0.1); /* Un toque azul al pasar el mouse */
+}
