@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Villatina — Sistema de Información Territorial</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- App Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===== LOADING SCREEN ===== -->
+<div id="loading-screen">
+    <div class="loading-content">
+        <div class="loading-logo">
+            <div class="loading-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+            <div class="loading-brand">
+                <span class="loading-title">Villatina</span>
+                <span class="loading-sub">Sistema de Información Territorial</span>
+            </div>
+        </div>
+        <div class="loading-bar-wrap">
+            <div class="loading-bar-track"><div class="loading-bar-fill" id="loading-bar"></div></div>
+        </div>
+        <p class="loading-msg" id="loading-msg">Inicializando mapa…</p>
+    </div>
+</div>
+
+<div id="app">
+
+    <!-- ===== TOPBAR ===== -->
+    <header id="topbar">
+        <div class="brand">
+            <button class="sidebar-toggle-btn" id="btn-sidebar-toggle" onclick="toggleSidebar()" title="Colapsar panel">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="brand-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+            <div class="brand-text">
+                <span class="brand-name">Villatina</span>
+                <span class="brand-tagline">Sistema de Información Territorial</span>
+            </div>
+        </div>
+        <div class="top-tools">
+            <button class="tool-btn" id="btn-medir" onclick="toggleMedicion()" title="Herramienta de Medición">
+                <i class="fa-solid fa-ruler-combined"></i>
+                <span>Medir</span>
+            </button>
+            <button class="tool-btn" id="btn-dibujar" onclick="togglePanel('panelDibujo')" title="Herramientas de Dibujo">
+                <i class="fa-solid fa-pen-nib"></i>
+                <span>Dibujar</span>
+            </button>
+            <button class="tool-btn" id="btn-streetview" onclick="toggleStreetView()" title="Street View 360">
+                <i class="fa-solid fa-street-view"></i>
+                <span>Street View</span>
+            </button>
+            <button class="tool-btn" id="btn-comparar" onclick="togglePanel('panelComparar')" title="Comparar capas (Swipe)">
+                <i class="fa-solid fa-left-right"></i>
+                <span>Comparar</span>
+            </button>
+            <button class="tool-btn" id="btn-googleearth" onclick="toggleGoogleEarth()" title="Google Earth / KML">
+                <i class="fa-solid fa-earth-americas"></i>
+                <span>G.Earth</span>
+            </button>
+            <button class="tool-btn" id="btn-dashboard" onclick="toggleDashboard()" title="Dashboard estadístico">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Dashboard</span>
+            </button>
+            <button class="tool-btn" id="btn-tabla" onclick="toggleTabla()" title="Tabla de atributos">
+                <i class="fa-solid fa-table"></i>
+                <span>Tabla</span>
+            </button>
+            <button class="tool-btn" id="btn-leyenda" onclick="togglePanel('panelLeyenda')" title="Leyenda">
+                <i class="fa-solid fa-list-ul"></i>
+                <span>Leyenda</span>
+            </button>
+            <div class="tool-sep"></div>
+            <button class="tool-btn icon-only" id="btn-darktheme" onclick="toggleDarkTheme()" title="Tema oscuro">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- ===== LAYOUT PRINCIPAL ===== -->
+    <div id="main-container">
+
+        <!-- SIDEBAR -->
+        <aside id="sidebar">
+            <div class="sidebar-tabs">
+                <button class="tab-btn active" onclick="switchTab('capas', this)">
+                    <i class="fa-solid fa-layer-group"></i> Capas
+                </button>
+                <button class="tab-btn" onclick="switchTab('ortofotos', this)">
+                    <i class="fa-solid fa-satellite"></i> Ortofotos
+                </button>
+                <button class="tab-btn" onclick="switchTab('estilos', this)">
+                    <i class="fa-solid fa-palette"></i> Estilos
+                </button>
+            </div>
+
+            <!-- Tab: Capas -->
+            <div id="tab-capas" class="tab-content active">
+                <div class="section-label">Mapas Base</div>
+                <div id="basemaps-container" class="basemaps-grid"></div>
+
+                <div class="section-label" style="margin-top:18px;">Capas Geográficas</div>
+                <div class="layer-toolbar">
+                    <div class="layer-search-wrap">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" id="layer-filter" placeholder="Buscar capas" oninput="filtrarCapasPanel(this.value)">
+                    </div>
+                    <button class="layer-toolbar-btn" onclick="zoomToActiveLayers()" title="Zoom a capas activas">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                </div>
+                <div id="layers-container" class="layer-groups"></div>
+
+                <!-- Sección Ráster -->
+                <div class="section-label" style="margin-top:18px;">Imágenes Ráster (GeoTIFF)</div>
+                <div id="raster-container" class="layer-groups"></div>
+            </div>
+
+            <!-- Tab: Ortofotos históricas (ahora como capas, no basemaps) -->
+            <div id="tab-ortofotos" class="tab-content">
+                <div class="section-label">Ortofotos de Medellín — Capas</div>
+                <p class="help-text">Activa una o varias ortofotos como capas independientes. Usa el Comparador para analizar cambios históricos.</p>
+                <div id="ortofotos-grid" class="ortofotos-grid"></div>
+                <div class="orto-info-bar">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Las ortofotos activas aparecen en el Comparador y pueden superponerse.</span>
+                </div>
+            </div>
+
+            <!-- Tab: Estilos -->
+            <div id="tab-estilos" class="tab-content">
+                <div class="section-label">Diseño y Simbología</div>
+                <p class="help-text">Selecciona una capa activa para configurar su apariencia.</p>
+
+                <div class="form-group">
+                    <label>Capa a modificar</label>
+                    <select id="estilos-capa-selector" onchange="cargarEstilosCapa(this.value)"></select>
+                </div>
+
+                <div class="form-group" id="estilos-campo-wrap">
+                    <label>Atributo</label>
+                    <select id="estilos-campo-selector" onchange="cambiarCampoSimbologia(this.value)"></select>
+                </div>
+
+                <div class="form-group" id="estilos-tipo-wrap">
+                    <label>Tipo de simbologÃ­a</label>
+                    <select id="estilos-tipo-selector" onchange="cambiarTipoSimbologia(this.value)">
+                        <option value="simple">SÃ­mbolo Ãºnico</option>
+                        <option value="unique">CategorÃ­as</option>
+                        <option value="graduated">Graduado numÃ©rico</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Opacidad Global — <strong id="val-opacidad-global">100</strong>%</label>
+                    <input type="range" id="rango-opacidad-global" min="0" max="100" step="1" value="100">
+                </div>
+
+                <!-- Integrado desde el geovisor g: estilos simples + categorias -->
+                <div id="estilos-simples">
+                    <div class="form-group">
+                        <label>Color de relleno</label>
+                        <div class="color-row">
+                            <input type="color" id="color-relleno" value="#39ff14">
+                            <code id="val-relleno">#39ff14</code>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Opacidad de relleno — <strong id="opac-val">50</strong>%</label>
+                        <input type="range" id="rango-opacidad" min="0" max="100" step="5" value="50">
+                    </div>
+                    <div class="form-group">
+                        <label>Color de borde</label>
+                        <div class="color-row">
+                            <input type="color" id="color-borde" value="#000000">
+                            <code id="val-borde">#000000</code>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Grosor de línea — <strong id="grosor-val">2</strong> px</label>
+                        <input type="range" id="rango-grosor" min="0" max="10" step="0.5" value="2">
+                    </div>
+                </div>
+
+                <div id="estilos-unique-values" style="display:none;">
+                    <div class="section-label" style="margin-top:12px; border-bottom:1px solid var(--border); padding-bottom:4px;">Simbología por Categorías (Unique Values)</div>
+                    <div id="unique-values-list" class="unique-values-list"></div>
+                </div>
+
+                <button id="btn-aplicar-estilo" class="btn-primary" style="margin-top:14px;">
+                    <i class="fa-solid fa-check"></i> Aplicar Cambios
+                </button>
+
+                <button id="btn-resetear-estilo" class="btn-secondary" style="margin-top:8px;">
+                    <i class="fa-solid fa-rotate-left"></i> Restaurar Original
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAPA -->
+        <div id="map-wrapper">
+            <div id="map"></div>
+
+            <!-- Street View indicator -->
+            <div id="sv-indicator" style="display:none;">
+                <i class="fa-solid fa-street-view"></i>
+                <span>Modo Street View — Haz clic en cualquier punto del mapa</span>
+                <button onclick="toggleStreetView()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Measurement indicator -->
+            <div id="medir-indicator" style="display:none;">
+                <i class="fa-solid fa-ruler-combined"></i>
+                <span id="medir-indicator-msg">Haz clic en el mapa para medir</span>
+                <button onclick="cancelarMedicion()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Control: restablecer norte -->
+            <button id="compass" title="Restablecer vista inicial" onclick="map.setView([6.24, -75.58], 13);">
+                <i class="fa-regular fa-compass"></i>
+            </button>
+
+            <!-- Coordenadas del cursor — reubicadas bottom-left visible -->
+            <div id="coordinates">
+                <i class="fa-solid fa-location-crosshairs"></i>
+                <span id="coord-text">—</span>
+            </div>
+        </div>
+
+    </div><!-- /main-container -->
+
+    <!-- FLOATING BAR: selección -->
+    <div id="floating-bar" style="display:none;">
+        <button class="fab-btn" onclick="clearSelection()">
+            <i class="fa-solid fa-xmark"></i> Limpiar selección
+        </button>
+        <div class="fab-sep"></div>
+        <span class="fab-btn" style="cursor:default;">
+            <i class="fa-solid fa-shapes"></i>
+            <span id="tabla-selected-count"></span>
+        </span>
+    </div>
+
+</div><!-- /app -->
+
+<!-- ===== VENTANA: TABLA DE ATRIBUTOS ===== -->
+<div id="tablaAtributos" class="ventana-flotante tabla-panel" style="display:none;">
+    <div class="ventana-header" id="headerTabla">
+        <div class="ventana-title">
+            <i class="fa-solid fa-table"></i>
+            <span>Tabla de Atributos</span>
+            <span id="tabla-titulo-capa" class="badge-capa"></span>
+        </div>
+        <div class="ventana-btns">
+            <span id="tabla-count" class="row-count"></span>
+            <span id="tabla-selected-count-header" class="row-count selected-count"></span>
+            <button class="win-btn" onclick="exportarCSV()" title="Exportar CSV">
+                <i class="fa-solid fa-file-csv"></i>
+            </button>
+            <button class="win-btn" onclick="minimizarTabla()" title="Minimizar">
+                <i class="fa-solid fa-window-minimize"></i>
+            </button>
+            <button class="win-btn close" onclick="toggleTabla()" title="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+    <div class="tabla-toolbar">
+        <div class="tabla-search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="tabla-search" placeholder="Buscar en la tabla…" oninput="buscarEnTabla(this.value)">
+        </div>
+        <select id="tabla-capa-select" class="tabla-layer-select" onchange="cambiarCapaTabla(this.value)">
+            <option value="">— Seleccionar capa —</option>
+        </select>
+    </div>
+    <div class="ventana-body tabla-body">
+        <div id="tablaContenido" class="tabla-contenido"></div>
+    </div>
+    <div class="ventana-footer">
+        <span class="row-count" id="tabla-count-footer"></span>
+        <button class="win-btn" onclick="exportarCSV()" style="margin-left:auto;">
+            <i class="fa-solid fa-download"></i> CSV
+        </button>
+    </div>
+</div>
+
+<!-- ===== VENTANA: LEYENDA ===== -->
+<div id="panelLeyenda" class="ventana-flotante leyenda-panel" style="display:none;">
+    <div class="ventana-header" id="headerLeyenda">
+        <div class="ventana-title">
+            <i class="fa-solid fa-list-ul"></i>
+            <span>Leyenda</span>
+        </div>
+        <div class="ventana-btns">
+            <button class="win-btn close" onclick="togglePanel('panelLeyenda')" title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+    <div class="ventana-body" style="padding:10px 12px;">
+        <div id="leyenda-contenido"></div>
+    </div>
+</div>
+
+<!-- ===== VENTANA: HERRAMIENTAS DE DIBUJO ===== -->
+<div id="panelDibujo" class="ventana-flotante dibujo-panel" style="display:none;">
+    <div class="ventana-header" id="headerDibujo">
+        <div class="ventana-title">
+            <i class="fa-solid fa-pen-nib"></i>
+            <span>Herramientas de Dibujo</span>
+        </div>
+        <div class="ventana-btns">
+            <button class="win-btn close" onclick="togglePanel('panelDibujo')" title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+    <div class="ventana-body" style="padding:14px;">
+        <p class="help-text">Selecciona una herramienta y haz clic sobre el mapa para comenzar.</p>
+        <div class="draw-grid">
+            <button class="draw-btn" onclick="activarDibujo('polygon')" data-tool="polygon">
+                <i class="fa-solid fa-draw-polygon"></i>
+                <span>Polígono</span>
+            </button>
+            <button class="draw-btn" onclick="activarDibujo('polyline')" data-tool="polyline">
+                <i class="fa-solid fa-wave-square"></i>
+                <span>Línea</span>
+            </button>
+            <button class="draw-btn" onclick="activarDibujo('marker')" data-tool="marker">
+                <i class="fa-solid fa-location-dot"></i>
+                <span>Punto</span>
+            </button>
+            <button class="draw-btn" onclick="activarDibujo('rectangle')" data-tool="rectangle">
+                <i class="fa-regular fa-square"></i>
+                <span>Rectángulo</span>
+            </button>
+            <button class="draw-btn" onclick="activarDibujo('circle')" data-tool="circle">
+                <i class="fa-regular fa-circle"></i>
+                <span>Círculo</span>
+            </button>
+            <button class="draw-btn btn-danger-soft" onclick="limpiarDibujos()">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>Borrar todo</span>
+            </button>
+        </div>
+        <div id="draw-status" class="draw-status" style="display:none;"></div>
+    </div>
+</div>
+
+<!-- ===== VENTANA: STREET VIEW (interna) ===== -->
+<div id="panelStreetView" class="ventana-flotante sv-panel" style="display:none;">
+    <div class="ventana-header" id="headerStreetView">
+        <div class="ventana-title">
+            <i class="fa-solid fa-street-view"></i>
+            <span>Street View 360°</span>
+            <span id="sv-coords-badge" class="badge-capa"></span>
+        </div>
+        <div class="ventana-btns">
+            <button class="win-btn" onclick="minimizarPanel('panelStreetView')" title="Minimizar">
+                <i class="fa-solid fa-window-minimize"></i>
+            </button>
+            <button class="win-btn close" onclick="cerrarStreetViewPanel()" title="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+    <div class="ventana-body sv-body">
+        <div class="sv-tabs-row">
+            <button class="sv-tab active" id="svtab-google" onclick="setSVTab('google', this)">
+                <i class="fa-brands fa-google"></i> Google Street View
+            </button>
+            <button class="sv-tab" id="svtab-mapillary" onclick="setSVTab('mapillary', this)">
+                <i class="fa-solid fa-camera"></i> Mapillary 360°
+            </button>
+        </div>
+        <iframe id="sv-iframe" src="about:blank" frameborder="0" allowfullscreen allow="fullscreen"></iframe>
+        <div id="sv-loading" class="sv-loading-overlay" style="display:none;">
+            <div class="sv-loading-spinner"></div>
+            <span>Cargando vista 360°…</span>
+        </div>
+        <div id="sv-error" class="sv-error-msg" style="display:none;">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <div>
+                <strong>Sin cobertura en este punto.</strong><br>
+                <span>Intenta Mapillary o haz clic en otro lugar.</span>
+            </div>
+        </div>
+    </div>
+    <div class="ventana-footer">
+        <span id="sv-footer-coords" class="row-count">
+            <i class="fa-solid fa-location-crosshairs" style="margin-right:4px;color:var(--accent);"></i>Sin ubicación
+        </span>
+        <button class="win-btn" style="margin-left:auto;" onclick="abrirStreetViewExterno()" title="Abrir en Google Maps">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Maps
+        </button>
+    </div>
+    <div class="ventana-resize-handle" id="sv-resize"></div>
+</div>
+
+<!-- ===== VENTANA: COMPARADOR / SWIPE ===== -->
+<div id="panelComparar" class="ventana-flotante comparar-panel" style="display:none;">
+    <div class="ventana-header" id="headerComparar">
+        <div class="ventana-title">
+            <i class="fa-solid fa-left-right"></i>
+            <span>Comparador de Ortofotos</span>
+        </div>
+        <div class="ventana-btns">
+            <button class="win-btn close" onclick="togglePanel('panelComparar')" title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+    <div class="ventana-body" style="padding:14px;">
+        <p class="help-text">Compara dos ortofotos activas y arrastra el divisor sobre el mapa.</p>
+
+        <div class="swipe-sides">
+            <div class="swipe-side-block">
+                <div class="swipe-side-label left">
+                    <i class="fa-solid fa-arrow-left"></i> Izquierdo
+                </div>
+                <select id="swipe-left-select" class="swipe-select"></select>
+            </div>
+            <div class="swipe-divider-icon"><i class="fa-solid fa-left-right"></i></div>
+            <div class="swipe-side-block">
+                <div class="swipe-side-label right">
+                    Derecho <i class="fa-solid fa-arrow-right"></i>
+                </div>
+                <select id="swipe-right-select" class="swipe-select"></select>
+            </div>
+        </div>
+
+        <button id="btn-activar-swipe" class="btn-primary" onclick="activarSwipe()">
+            <i class="fa-solid fa-play"></i> Activar Comparador
+        </button>
+        <button id="btn-desactivar-swipe" class="btn-secondary" onclick="desactivarSwipe()" style="margin-top:8px;display:none;">
+            <i class="fa-solid fa-stop"></i> Desactivar
+        </button>
+        <div id="swipe-status" class="draw-status" style="display:none; margin-top:12px;"></div>
+    </div>
+</div>
+
+<!-- ===== VENTANA: GOOGLE EARTH ===== -->
+<div id="panelGoogleEarth" class="ventana-flotante ge-panel" style="display:none;">
+    <div class="ventana-header" id="headerGoogleEarth">
+        <div class="ventana-title">
+            <i class="fa-solid fa-earth-americas"></i>
+            <span>Google Earth / KML</span>
+        </div>
+        <div class="ventana-btns">
+            <button class="win-btn close" onclick="toggleGoogleEarth()" title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+    <div class="ventana-body" style="padding:14px; overflow-y:auto;">
+        <p class="help-text">Integración con Google Earth para exploración histórica y 3D.</p>
+
+        <div class="ge-option-card" onclick="abrirGoogleEarthWeb()">
+            <div class="ge-option-icon" style="background:linear-gradient(135deg,#4285f4,#34a853);">
+                <i class="fa-solid fa-globe"></i>
+            </div>
+            <div class="ge-option-info">
+                <div class="ge-option-title">Google Earth Web</div>
+                <div class="ge-option-sub">Abrir la zona actual en Google Earth (navegador)</div>
+            </div>
+            <i class="fa-solid fa-arrow-up-right-from-square ge-option-arrow"></i>
+        </div>
+
+        <div class="ge-option-card" onclick="exportarKML()">
+            <div class="ge-option-icon" style="background:linear-gradient(135deg,#fbbc04,#ea4335);">
+                <i class="fa-solid fa-download"></i>
+            </div>
+            <div class="ge-option-info">
+                <div class="ge-option-title">Exportar KML</div>
+                <div class="ge-option-sub">Descargar vista actual para Google Earth Pro</div>
+            </div>
+            <i class="fa-solid fa-download ge-option-arrow"></i>
+        </div>
+
+        <div class="ge-option-card" onclick="exportarKMLCapas()">
+            <div class="ge-option-icon" style="background:linear-gradient(135deg,#34a853,#0f9d58);">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <div class="ge-option-info">
+                <div class="ge-option-title">Exportar Capas Activas (KML)</div>
+                <div class="ge-option-sub">Exporta todas las capas GeoJSON activas</div>
+            </div>
+            <i class="fa-solid fa-download ge-option-arrow"></i>
+        </div>
+
+        <div class="ge-instrucciones">
+            <div class="ge-instrucciones-title"><i class="fa-solid fa-circle-info"></i> Imágenes Históricas en Google Earth Pro</div>
+            <ol class="ge-steps">
+                <li>Descarga el KML con "Exportar KML"</li>
+                <li>Abre <strong>Google Earth Pro</strong> en tu PC</li>
+                <li>Ve a <code>Archivo → Abrir</code> y selecciona el .kml</li>
+                <li>Usa el <strong>slider de tiempo</strong> <i class="fa-solid fa-clock-rotate-left"></i> en la barra de herramientas para ver imágenes históricas</li>
+                <li>El deslizador muestra años desde ~1984 hasta hoy</li>
+            </ol>
+        </div>
+
+        <div id="ge-status" class="draw-status" style="display:none; margin-top:10px;"></div>
+    </div>
+</div>
+
+<!-- ===== VENTANA: DASHBOARD ESTADÍSTICO ===== -->
+<div id="panelDashboard" class="ventana-flotante dashboard-panel" style="display:none;">
+    <div class="ventana-header" id="headerDashboard">
+        <div class="ventana-title">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Dashboard Estadístico</span>
+        </div>
+        <div class="ventana-btns">
+            <button class="win-btn" onclick="actualizarDashboard()" title="Actualizar datos">
+                <i class="fa-solid fa-rotate"></i>
+            </button>
+            <button class="win-btn" id="btn-dash-mode" onclick="toggleDashboardMode()" title="Modo personalizado">
+                <i class="fa-solid fa-sliders"></i>
+            </button>
+            <button class="win-btn" onclick="minimizarPanel('panelDashboard')" title="Minimizar">
+                <i class="fa-solid fa-window-minimize"></i>
+            </button>
+            <button class="win-btn close" onclick="toggleDashboard()" title="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modo auto -->
+    <div id="dashboard-auto" class="dashboard-body">
+        <div id="dashboard-kpis" class="dash-kpis"></div>
+        <div class="dash-chart-header" id="dash-chart-header" style="display:none;">
+            <label class="dash-layer-label">Capa</label>
+            <select id="dash-layer-select" class="dash-select" onchange="renderDashboardCharts(this.value)"></select>
+        </div>
+        <div id="dashboard-charts" class="dash-charts-grid"></div>
+        <div id="dashboard-empty" class="empty-msg" style="display:none;">
+            <i class="fa-solid fa-circle-info"></i> Activa capas para ver estadísticas.
+        </div>
+    </div>
+
+    <!-- Modo personalizado -->
+    <div id="dashboard-custom" class="dashboard-body" style="display:none;">
+        <div style="padding:14px;">
+            <div class="form-group">
+                <label>Capa</label>
+                <select id="dash-custom-layer" class="dash-select" onchange="cargarCamposDashCustom(this.value)"></select>
+            </div>
+            <div class="form-group">
+                <label>Campo a analizar</label>
+                <select id="dash-custom-field" class="dash-select"></select>
+            </div>
+            <div class="form-group">
+                <label>Tipo de gráfica</label>
+                <select id="dash-custom-chart" class="dash-select">
+                    <option value="bar">Barras</option>
+                    <option value="doughnut">Donut</option>
+                    <option value="pie">Pastel</option>
+                </select>
+            </div>
+            <button class="btn-primary" onclick="generarGraficaCustom()">
+                <i class="fa-solid fa-chart-bar"></i> Generar Gráfica
+            </button>
+        </div>
+        <div id="dashboard-custom-charts" class="dash-charts-grid"></div>
+    </div>
+</div>
+
+<!-- ===== VENTANA: HERRAMIENTA DE MEDICIÓN ===== -->
+<div id="panelMedicion" class="ventana-flotante medicion-panel" style="display:none;">
+    <div class="ventana-header" id="headerMedicion">
+        <div class="ventana-title">
+            <i class="fa-solid fa-ruler-combined"></i>
+            <span>Herramienta de Medición</span>
+        </div>
+        <div class="ventana-btns">
+            <button class="win-btn close" onclick="cerrarMedicion()" title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+    <div class="ventana-body" style="padding:14px;">
+        <div class="medicion-modos">
+            <button class="medicion-modo-btn active" id="btn-modo-distancia" onclick="setMedicionMode('distancia')">
+                <i class="fa-solid fa-ruler"></i> Distancia
+            </button>
+            <button class="medicion-modo-btn" id="btn-modo-area" onclick="setMedicionMode('area')">
+                <i class="fa-solid fa-draw-polygon"></i> Área
+            </button>
+        </div>
+        <div id="medicion-instruccion" class="medicion-instruccion">
+            <i class="fa-solid fa-hand-pointer"></i>
+            Haz clic en el mapa para agregar puntos.<br>
+            Doble clic o presiona <kbd>Enter</kbd> para finalizar.
+        </div>
+        <div id="medicion-resultados" class="medicion-resultados" style="display:none;">
+            <div class="medicion-total-row">
+                <span class="medicion-total-label" id="medicion-total-label">Distancia total</span>
+                <span class="medicion-total-valor" id="medicion-total-valor">0 m</span>
+            </div>
+            <div id="medicion-segmentos" class="medicion-segmentos"></div>
+        </div>
+        <div class="medicion-acciones">
+            <button class="btn-secondary" onclick="deshacerUltimoPunto()" id="btn-deshacer-punto" style="display:none;">
+                <i class="fa-solid fa-rotate-left"></i> Deshacer
+            </button>
+            <button class="btn-danger-soft draw-btn" style="width:100%;margin-top:6px;" onclick="limpiarMedicion()">
+                <i class="fa-solid fa-trash-can"></i> Borrar todo
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+
+<!-- GeoRaster (TIFF support) -->
+<script src="https://unpkg.com/georaster"></script>
+<script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+
+<!-- Chart.js v4 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- App principal -->
+<script src="scripts.js"></script>
+</body>
+</html>
